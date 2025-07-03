@@ -7,21 +7,29 @@ import (
 	"github.com/harshvardhan-pandey/chatterbox/pkg/websocket"
 )
 
-func serveWs(w http.ResponseWriter, r *http.Request){
+func serveWs(pool *websocket.Pool, w http.ResponseWriter, r *http.Request){
 	
 	conn, err := websocket.Upgrade(w, r)
 	if err != nil{
-		fmt.Fprintf(w, "%+V\n", err)
-		return
+		fmt.Fprintf(w, "%+v\n", err)
 	}
 
-	go websocket.Writer(conn)
-	websocket.Reader(conn)
+	client := &websocket.Client{
+        Conn: conn,
+        Pool: pool,
+    }
+
+    pool.Register <- client
+    client.Read()
 
 }
 
 func setupRoutes() {
-	http.HandleFunc("/ws", serveWs)
+	pool := websocket.NewPool()
+	go pool.Start()
+	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+        serveWs(pool, w, r)
+    })
 }
 
 func main() {
