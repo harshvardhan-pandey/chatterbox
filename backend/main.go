@@ -4,47 +4,23 @@ import (
     "fmt"
     "net/http"
 
-	"github.com/gorilla/websocket"
+	"github.com/harshvardhan-pandey/chatterbox/pkg/websocket"
 )
-
-var upgrader = websocket.Upgrader{
-	ReadBufferSize: 1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool { return true }, //allow everyone right now
-}
 
 func serveWs(w http.ResponseWriter, r *http.Request){
 	
-	conn, err := upgrader.Upgrade(w, r, nil)
+	conn, err := websocket.Upgrade(w, r)
 	if err != nil{
-		fmt.Println(err)
+		fmt.Fprintf(w, "%+V\n", err)
 		return
 	}
-	
-	defer conn.Close()
 
-	for{
-		messageType, data, err := conn.ReadMessage()
-		if err != nil{
-			fmt.Println(err)
-			return
-		}
-		fmt.Println(string(data))
-
-		if err:=conn.WriteMessage(messageType, data); err != nil{
-			fmt.Println(err)
-			return
-		}
-
-	}
-
+	go websocket.Writer(conn)
+	websocket.Reader(conn)
 
 }
 
 func setupRoutes() {
-    http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-        fmt.Fprintf(w, "Simple Server")
-    })
 	http.HandleFunc("/ws", serveWs)
 }
 
